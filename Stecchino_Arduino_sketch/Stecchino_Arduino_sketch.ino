@@ -61,10 +61,24 @@ CRGB leds[NUM_LEDS];  // Define the array of leds
 
 //byte led_colour[NUM_LEDS];
 
+long readVcc();
+void CHECK_BATTERY_LED(int vcc);
+void alloff();
+void rainbow();
+void confetti();
+void sinelon();
+void bpm();
+void juggle();
+void redGlitter();
+float CheckAccel();
+void sleepNow();
+void pinInterrupt();
+
 void setup() {
 
-  Serial.begin(9600);
-  while (!Serial);
+  Serial.begin(115200);
+  while (!Serial)
+      ;
 
   pinMode(PushB1,INPUT);
   digitalWrite(PushB1,HIGH);  // Configure built-in pullup resitor for push button 1
@@ -83,9 +97,9 @@ void setup() {
   FastLED.setBrightness(LOW_BRIGHTNESS);  
   
   // MPU
+  Serial.println("Starting MPU... ");
   Wire.begin();
   accelgyro.initialize();  
-  Serial.println("Starting MPU... ");
   
   //a_forward_offset=0;
   //a_sideway_offset=0;
@@ -106,14 +120,14 @@ void setup() {
 // List of patterns to cycle through.  Each is defined as a separate function below.
 typedef void (*SimplePatternList[])();
 SimplePatternList gPatterns = {confetti, sinelon, juggle, bpm, rainbow};
-char* SimplePatternNames[]={"confetti","sinelon", "juggle", "bpm", "rainbow" };
+const char* SimplePatternNames[] = {"confetti","sinelon", "juggle", "bpm", "rainbow" };
 uint8_t gCurrentPatternNumber = 0; // Index number of which pattern is current
 uint8_t gHue = 0; // rotating "base color" used by many of the patterns
 uint8_t gFrameCount = 0; // Inc by 1 for each Frame of Trasition, New/Changed connection(s) pattern
 
 
 void LEDS_ON(int count, int record){
-    for (int i = NUM_LEDS; i >=0; i--) {
+    for (int i = NUM_LEDS-1; i >=0; i--) {
       if (i<=NUM_LEDS-count){leds[i]=CRGB::Black;}
       //else {leds[i]=CRGB::Green;}
       else {leds[i]=CHSV(gHue, 255, 255);}
@@ -125,14 +139,14 @@ void LEDS_ON(int count, int record){
   // insert a delay to keep the framerate modest
   FastLED.delay(1000/FRAMES_PER_SECOND);       
   // do some periodic updates
-  EVERY_N_MILLISECONDS( 20 ) { gHue++; } // slowly cycle the "base color" through the rainbow
+  EVERY_N_MILLISECONDS(20) { gHue++; } // slowly cycle the "base color" through the rainbow
 }
 
 void LED(String pattern){
   if (pattern=="going_to_sleep"){
     digitalWrite(MOSFET_GATE,HIGH);
     FastLED.setBrightness(LOW_BRIGHTNESS); 
-    for (int i = NUM_LEDS; i >=0; i--){
+    for (int i = NUM_LEDS-1; i >=0; i--){
       leds[i]=CRGB::Blue;
     }
   }
@@ -148,7 +162,7 @@ void LED(String pattern){
   if (pattern=="start_play"){
     digitalWrite(MOSFET_GATE,HIGH);
     FastLED.setBrightness(LOW_BRIGHTNESS); 
-    for (int i = NUM_LEDS; i >=0; i--){
+    for (int i = NUM_LEDS-1; i >=0; i--){
       leds[i]=CRGB::Green;
     }
   }
@@ -168,13 +182,13 @@ void LED(String pattern){
   if (pattern=="game_over"){
     digitalWrite(MOSFET_GATE,HIGH);
     FastLED.setBrightness(LOW_BRIGHTNESS); 
-    for (int i = NUM_LEDS; i >=0; i--){
+    for (int i = NUM_LEDS-1; i >=0; i--){
       leds[i]=CRGB::Red;
     }
   }
   
   if (pattern=="off"){
-    for (int i = NUM_LEDS; i >=0; i--) {
+    for (int i = NUM_LEDS-1; i >=0; i--) {
       //leds[i]=CRGB::Black;
       leds[i].nscale8(230);
     }
@@ -186,7 +200,7 @@ void LED(String pattern){
   // insert a delay to keep the framerate modest
   FastLED.delay(1000/FRAMES_PER_SECOND);       
   // do some periodic updates
-  EVERY_N_MILLISECONDS( 20 ) { gHue++; } // slowly cycle the "base color" through the rainbow
+  EVERY_N_MILLISECONDS(20) { gHue++; } // slowly cycle the "base color" through the rainbow
 }
 
 void SPIRIT_LEVEL_LED(float angle){
@@ -197,7 +211,7 @@ void SPIRIT_LEVEL_LED(float angle){
     //int pos_led=map(int_angle,45,-45,1,NUM_LEDS);
     int pos_led=map(int_angle,-45,45,1,NUM_LEDS);
     int couleur_led=map(pos_led,0,NUM_LEDS,0,255);
-    for (int i = NUM_LEDS; i >=0; i--){
+    for (int i = NUM_LEDS-1; i >=0; i--){
       if (i==pos_led){leds[i]=CHSV(couleur_led, 255, 255);}
       //if (i==pos_led){leds[i]=CRGB::Blue;}
       else {leds[i]=CRGB::Black;}
@@ -207,7 +221,7 @@ void SPIRIT_LEVEL_LED(float angle){
     // insert a delay to keep the framerate modest
     FastLED.delay(1000/FRAMES_PER_SECOND);  
     // do some periodic updates
-  EVERY_N_MILLISECONDS( 20 ) { gHue++; } // slowly cycle the "base color" through the rainbow 
+  EVERY_N_MILLISECONDS(20) { gHue++; } // slowly cycle the "base color" through the rainbow 
 }
 
 void CHECK_BATTERY_LED(int vcc){  // bargraph showing battery level
@@ -222,7 +236,7 @@ void CHECK_BATTERY_LED(int vcc){  // bargraph showing battery level
     //Serial.println(pos_led);
 
     
-    for (int i = NUM_LEDS; i >=0; i--){
+    for (int i = NUM_LEDS-1-1; i >=0; i--){
       if (i<=pos_led){
         if (i<=5){leds[i]=CRGB::Red;}
         else if (i>5 && i<=15){leds[i]=CRGB::Orange;}
@@ -235,35 +249,47 @@ void CHECK_BATTERY_LED(int vcc){  // bargraph showing battery level
     // insert a delay to keep the framerate modest
     FastLED.delay(1000/FRAMES_PER_SECOND);  
     // do some periodic updates
-  EVERY_N_MILLISECONDS( 20 ) { gHue++; } // slowly cycle the "base color" through the rainbow 
+    EVERY_N_MILLISECONDS(20)
+    {
+        // slowly cycle the "base color" through the rainbow 
+        gHue++;
+    }
 }
 
 void nextPattern()
 {
   // add one to the current pattern number, and wrap around at the end
-  gCurrentPatternNumber = (gCurrentPatternNumber + 1) % ARRAY_SIZE( gPatterns);
+  gCurrentPatternNumber = (gCurrentPatternNumber + 1) % ARRAY_SIZE(gPatterns);
+  Serial.print("gCurrentPatternNumber ");
+  Serial.println(gCurrentPatternNumber);
+  delay(1000);
 }
 
 void rainbow() 
 {
   // FastLED's built-in rainbow generator
-  fill_rainbow( leds, NUM_LEDS, gHue, 7);
+  fill_rainbow(leds, NUM_LEDS, gHue, 7);
 }
 
 void confetti() 
 {
   // random colored speckles that blink in and fade smoothly
-  fadeToBlackBy( leds, NUM_LEDS, 10);
+  fadeToBlackBy(leds, NUM_LEDS, 10);
   int pos = random16(NUM_LEDS);
-  leds[pos] += CHSV( gHue + random8(64), 200, 255);
+  leds[pos] += CHSV(gHue + random8(64), 200, 255);
 }
 
 void sinelon()
 {
+    Serial.println("sinelon");
+    delay(1000);
   // a colored dot sweeping back and forth, with fading trails
-  fadeToBlackBy( leds, NUM_LEDS, 20);
+  fadeToBlackBy(leds, NUM_LEDS, 20);
   int pos = beatsin16(13,0,NUM_LEDS);
-  leds[pos] += CHSV( gHue, 255, 192);
+  Serial.print("pos");
+  Serial.println(pos);
+  delay(1000);
+  leds[pos] += CHSV(gHue, 255, 192);
 }
 
 void bpm()
@@ -271,17 +297,17 @@ void bpm()
   // colored stripes pulsing at a defined Beats-Per-Minute (BPM)
   uint8_t BeatsPerMinute = 62;
   CRGBPalette16 palette = PartyColors_p;
-  uint8_t beat = beatsin8( BeatsPerMinute, 64, 255);
-  for( int i = 0; i < NUM_LEDS; i++) { //9948
+  uint8_t beat = beatsin8(BeatsPerMinute, 64, 255);
+  for(int i = 0; i < NUM_LEDS; i++) { //9948
     leds[i] = ColorFromPalette(palette, gHue+(i*2), beat-gHue+(i*10));
   }
 }
 
 void juggle() {
   // eight colored dots, weaving in and out of sync with each other
-  fadeToBlackBy( leds, NUM_LEDS, 20);
+  fadeToBlackBy(leds, NUM_LEDS, 20);
   byte dothue = 0;
-  for( int i = 0; i < 8; i++) {
+  for(int i = 0; i < 8; i++) {
     leds[beatsin16(i+7,0,NUM_LEDS)] |= CHSV(dothue, 200, 255);
     dothue += 32;
   }
@@ -290,26 +316,26 @@ void juggle() {
 void redGlitter() {
   gFrameCount += 1;
   if (gFrameCount % 4 == 1) { // Slow down frame rate
-    for ( int i = 0; i < NUM_LEDS; i++) {
+    for (int i = 0; i < NUM_LEDS; i++) {
       leds[i] = CHSV(HUE_RED, 0, random8() < 60 ? random8() : random8(64));
     }
   }
 }
   
 void alloff() {
-  for (int i = NUM_LEDS; i >=0; i--) {
+  for (int i = NUM_LEDS-1; i >=0; i--) {
     leds[i]=CRGB::Black;
     delay(10);
     FastLED.show();
   }
-  //FastLED.show();
 }
 
 enum {Check_Battery,Wake_Up_Transition,Idle,Start_Play_Transition,Play,Wahoo,Game_Over_Transition, Spirit_Level,Magic_Wand,Sleep_Transition,Fake_Sleep} condition=Idle;
 
 void loop() {
+  Serial.print("loop: ");
+  Serial.println(condition);
   angle_2_horizon=CheckAccel();
-  //Serial.println(condition);
   switch (condition) {
 
   case Check_Battery:
@@ -326,18 +352,43 @@ void loop() {
   case Wake_Up_Transition:
     break;
     
-  case Idle:      
+  case Idle:
     if (Button_1_On && Ready_4_Change) { 
+      Serial.println("NEXT");
+      delay(1000);
       //delay(20); // debouncing
       Ready_4_Change=false;
       nextPattern();  // change light patterns when button is pressed
       start_time=millis();  // restart counter to enjoy new pattern longer
     }
-    if (!Button_1_On){Ready_4_Change=true;}
-    if (millis()-start_time>SET_IDLE_MILLISECONDS){condition=Fake_Sleep;start_time=millis();}
-    if (accel_status=="straight"){condition=Start_Play_Transition;start_time=millis();}
-    if (orientation==POSITION_3){condition=Spirit_Level;start_time=millis();}
-    if (orientation==POSITION_2){condition=Sleep_Transition;start_time=millis();}
+    if (!Button_1_On)
+    {
+        Ready_4_Change=true;
+    }
+    if (millis()-start_time>SET_IDLE_MILLISECONDS)
+    {
+      Serial.println("leave idle");
+      delay(1000);
+        condition=Fake_Sleep;start_time=millis();
+    }
+    if (accel_status=="straight")
+    {
+      Serial.println("straight");
+      delay(1000);
+        condition=Start_Play_Transition;start_time=millis();
+    }
+    if (orientation==POSITION_3)
+    {
+      Serial.println("spirit");
+      delay(1000);
+        condition=Spirit_Level;start_time=millis();
+    }
+    if (orientation==POSITION_2)
+    {
+      Serial.println("pos2");
+      delay(1000);
+        condition=Sleep_Transition;start_time=millis();
+    }
     else {LED("idle");}
     break;
     
@@ -372,8 +423,8 @@ void loop() {
     if (orientation==POSITION_1 || orientation==POSITION_2){condition=Idle;start_time=millis();}
     if (millis()-start_time>SET_MAX_SPIRIT_LEVEL_MILLISECONDS){condition=Fake_Sleep;start_time=millis();}
     SPIRIT_LEVEL_LED(angle_2_horizon);
-    //Serial.print("Angle to horizon:");
-    //Serial.println(angle_2_horizon);
+    Serial.print("Angle to horizon:");
+    Serial.println(angle_2_horizon);
     break;
     
    case Magic_Wand:
