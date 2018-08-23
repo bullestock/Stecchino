@@ -24,7 +24,6 @@
 #define SET_FAKE_SLEEP_MILLISECONDS 60000 // how many seconds at Fake_sleep before moving to Sleep?
 #define SET_MAX_SPIRIT_LEVEL_MILLISECONDS 20000 // how many seconds at Fake_sleep before moving to Sleep?
 #define SET_MAX_PLAY_SECONDS 60 // how many milliseconds vertical before moving to Sleep? (in case Stecchino is forgotten vertical)
-#define NUM_LEDS_PER_SECONDS 2 // how many LEDs are turned on every second when playing?#define WAKE_UP_TRANSITION 1000 //duration of animation when system returns from sleep (ms)
 #define START_PLAY_TRANSITION 500 //duration of animation when game starts (ms)
 #define GAME_OVER_TRANSITION 1000 //duration of game over animation (ms)
 #define SLEEP_TRANSITION 2000 //duration of animation to sleep (ms)
@@ -56,6 +55,7 @@ const char *position_stecchino[COUNT] = { "None", "POSITION_1", "POSITION_2", "P
 // POSITION_5: Stecchino vertical with PCB up (normal game position = straight)
 // POSITION_6: Stecchino vertical with PCB down (easy game position = straight)
 uint8_t orientation = NONE;
+float num_leds_per_second = 5; // how many LEDs are turned on every second when playing?
 
 unsigned long start_time = 0, current_time = 0, elapsed_time = 0, record_time = 0, previous_record_time = 0;
 int i = 0, Vcc = 0;
@@ -83,14 +83,14 @@ void setup() {
       ;
 
   pinMode(PushB1,INPUT);
-  digitalWrite(PushB1,HIGH);  // Configure built-in pullup resitor for push button 1
+  digitalWrite(PushB1, HIGH);  // Configure built-in pullup resitor for push button 1
 
   pinMode(MOSFET_GATE,OUTPUT);
-  digitalWrite(MOSFET_GATE,HIGH);
+  digitalWrite(MOSFET_GATE, HIGH);
 
 
   pinMode(MPU_POWER_PIN,OUTPUT);
-  digitalWrite(MPU_POWER_PIN,HIGH);
+  digitalWrite(MPU_POWER_PIN, HIGH);
 
   delay(500);
   
@@ -121,7 +121,7 @@ SimplePatternList gPatterns = {confetti, sinelon, juggle, bpm, rainbow};
 const char* SimplePatternNames[] = {"confetti","sinelon", "juggle", "bpm", "rainbow" };
 uint8_t gCurrentPatternNumber = 0; // Index number of which pattern is current
 uint8_t gHue = 0; // rotating "base color" used by many of the patterns
-uint8_t gFrameCount = 0; // Inc by 1 for each Frame of Trasition, New/Changed connection(s) pattern
+uint8_t gFrameCount = 0; // Inc by 1 for each Frame of Transition, New/Changed connection(s) pattern
 
 
 void setLedsOn(int count, int record) {
@@ -147,13 +147,15 @@ enum LedState {
     LED_WAHOO,
     LED_SPIRIT_LEVEL,
     LED_GAME_OVER,
+    LED_EASY,
+    LED_HARD,
     LED_OFF
 };
 
 void setLedPattern(LedState pattern)
 {
   if (pattern == LED_GOING_TO_SLEEP) {
-    digitalWrite(MOSFET_GATE,HIGH);
+    digitalWrite(MOSFET_GATE, HIGH);
     FastLED.setBrightness(LOW_BRIGHTNESS); 
     for (int i = NUM_LEDS-1; i >= 0; i--) {
       leds[i] = CRGB::Blue;
@@ -161,7 +163,7 @@ void setLedPattern(LedState pattern)
   }
   
   if (pattern == LED_IDLE) {
-    digitalWrite(MOSFET_GATE,HIGH);
+    digitalWrite(MOSFET_GATE, HIGH);
     FastLED.setBrightness(HIGH_BRIGHTNESS); 
     gPatterns[gCurrentPatternNumber]();
     //confetti();
@@ -169,7 +171,7 @@ void setLedPattern(LedState pattern)
   }
       
   if (pattern == LED_START_PLAY) {
-    digitalWrite(MOSFET_GATE,HIGH);
+    digitalWrite(MOSFET_GATE, HIGH);
     FastLED.setBrightness(LOW_BRIGHTNESS); 
     for (int i = NUM_LEDS-1; i >= 0; i--) {
       leds[i] = CRGB::Green;
@@ -177,22 +179,38 @@ void setLedPattern(LedState pattern)
   }
    
    if (pattern == LED_WAHOO) {
-    digitalWrite(MOSFET_GATE,HIGH);
+    digitalWrite(MOSFET_GATE, HIGH);
     FastLED.setBrightness(HIGH_BRIGHTNESS); 
     redGlitter();
   } 
    
    if (pattern == LED_SPIRIT_LEVEL) {
-    digitalWrite(MOSFET_GATE,HIGH);
+    digitalWrite(MOSFET_GATE, HIGH);
     FastLED.setBrightness(HIGH_BRIGHTNESS); 
     sinelon();
   } 
     
   if (pattern == LED_GAME_OVER) {
-    digitalWrite(MOSFET_GATE,HIGH);
+    digitalWrite(MOSFET_GATE, HIGH);
     FastLED.setBrightness(LOW_BRIGHTNESS); 
     for (int i = NUM_LEDS-1; i >= 0; i--) {
       leds[i] = CRGB::Red;
+    }
+  }
+  
+  if (pattern == LED_EASY) {
+    digitalWrite(MOSFET_GATE, HIGH);
+    FastLED.setBrightness(HIGH_BRIGHTNESS); 
+    for (int i = NUM_LEDS-1; i >= 0; i--) {
+      leds[i] = CRGB::Green;
+    }
+  }
+
+  if (pattern == LED_HARD) {
+    digitalWrite(MOSFET_GATE, HIGH);
+    FastLED.setBrightness(HIGH_BRIGHTNESS); 
+    for (int i = NUM_LEDS-1; i >= 0; i--) {
+      leds[i] = CRGB::White;
     }
   }
   
@@ -212,7 +230,7 @@ void setLedPattern(LedState pattern)
 }
 
 void SPIRIT_LEVEL_LED(float angle) {
-    digitalWrite(MOSFET_GATE,HIGH);
+    digitalWrite(MOSFET_GATE, HIGH);
     FastLED.setBrightness(HIGH_BRIGHTNESS);
     int int_angle = int(angle);
     //int pos_led = map(int_angle,-90,90,1,NUM_LEDS);
@@ -233,11 +251,11 @@ void SPIRIT_LEVEL_LED(float angle) {
 }
 
 void checkBatteryLed(int vcc) {  // bargraph showing battery level
-    digitalWrite(MOSFET_GATE,HIGH);
+    digitalWrite(MOSFET_GATE, HIGH);
     FastLED.setBrightness(LOW_BRIGHTNESS);
     if (vcc<LOW_VCC) {vcc = LOW_VCC;}
     if (vcc>HIGH_VCC) {vcc = HIGH_VCC;}
-    int pos_led = map(vcc,LOW_VCC,HIGH_VCC,1,NUM_LEDS);
+    int pos_led = map(vcc,LOW_VCC, HIGH_VCC,1,NUM_LEDS);
     //Serial.println(vcc);
     //Serial.println(LOW_VCC);
     //Serial.println(HIGH_VCC);
@@ -421,11 +439,33 @@ void loop() {
     
     case Play:
         elapsed_time = (millis()-start_time)/1000;
-        if (elapsed_time>record_time) {record_time = elapsed_time;}
-        if (elapsed_time>previous_record_time && elapsed_time<=previous_record_time+1 && previous_record_time !=0) {setLedPattern(LED_WAHOO);}
-        if (elapsed_time>SET_MAX_PLAY_SECONDS) {state = Sleep_Transition;start_time = millis();}
-        if (NUM_LEDS_PER_SECONDS*int(elapsed_time) >= NUM_LEDS) {setLedPattern(LED_WAHOO);}
-        else {setLedsOn(NUM_LEDS_PER_SECONDS*int(elapsed_time),NUM_LEDS_PER_SECONDS*int(record_time));} 
+        if (elapsed_time > record_time) 
+        {
+            // User has beaten record
+            record_time = elapsed_time;
+        }
+        if (elapsed_time > previous_record_time && elapsed_time <= previous_record_time+1 && previous_record_time != 0) 
+        {
+            setLedPattern(LED_WAHOO);
+        }
+        if (elapsed_time > SET_MAX_PLAY_SECONDS) 
+        {
+            // Timeout, go to sleep
+            state = Sleep_Transition;
+            start_time = millis();
+        }
+        if (num_leds_per_second*int(elapsed_time) >= NUM_LEDS) 
+        {
+            // All LEDs are lit
+            setLedPattern(LED_WAHOO);
+        }
+        else 
+        {
+            // Turn on the appropriate number of LEDs
+            const int elapsed_time_x10 = (millis()-start_time)/100;
+            const int leds_on = int(num_leds_per_second*elapsed_time_x10/10);
+            setLedsOn(leds_on, int(num_leds_per_second*record_time));
+        } 
         if (accel_status == ACCEL_FALLEN)
         {
             state = Game_Over_Transition;start_time = millis();
@@ -523,6 +563,20 @@ float getAngle() {
   } else if (a_sidewayRollingSampleMedian <= -80 && abs(a_verticalRollingSampleMedian) <= 25 && abs(a_forwardRollingSampleMedian) <= 25 && orientation != POSITION_4) {
     // Horizontal with short edge down
     orientation = POSITION_4;
+    if (num_leds_per_second < 5)
+    {
+        num_leds_per_second = 5;
+        Serial.println("Easy mode");
+        setLedPattern(LED_EASY);
+        delay(2000);
+    }
+    else
+    {
+        num_leds_per_second = 2;
+        Serial.println("Normal mode");
+        setLedPattern(LED_HARD);
+        delay(2000);
+    }
   }
 
   angle_2_horizon = atan2(float(a_verticalRollingSampleMedian), float(max(abs(a_sidewayRollingSampleMedian), abs(a_forwardRollingSampleMedian))))*180/PI;
@@ -565,8 +619,8 @@ void sleepNow(void)
     //
     // Upon waking up, sketch continues from this point.
     sleep_disable();
-    digitalWrite(MOSFET_GATE,HIGH);   // turn LED on to indicate awake 
-    digitalWrite(MPU_POWER_PIN,HIGH);   // turn MPU off
+    digitalWrite(MOSFET_GATE, HIGH);   // turn LED on to indicate awake 
+    digitalWrite(MPU_POWER_PIN, HIGH);   // turn MPU off
     delay(100);
 
     // clear running median buffer
