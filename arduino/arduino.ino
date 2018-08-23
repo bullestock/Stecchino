@@ -49,12 +49,12 @@ RunningMedian a_verticalRollingSample = RunningMedian(5);
 int a_forward_offset = 0,a_sideway_offset = 0,a_vertical_offset = 0;
 enum POSITION_STECCHINO { NONE, POSITION_1,POSITION_2,POSITION_3,POSITION_4, POSITION_5, POSITION_6, COUNT };  // Used to detect position of buttons relative to Stecchino and user
 const char *position_stecchino[COUNT] = { "None", "POSITION_1", "POSITION_2", "POSITION_3", "POSITION_4", "POSITION_5", "POSITION_6" };
-// POSITION_1: Stecchino V3/V4 horizontal with buttons up (idle)
-// POSITION_2: Stecchino V3/V4 horizontal with buttons down (force sleep)
-// POSITION_3: Stecchino V3/V4 horizontal with long edge down (spirit level)
-// POSITION_4: Stecchino V3/V4 horizontal with short edge down (opposite to spirit level)
-// POSITION_5: Stecchino V3/V4 vertical with PCB up (normal game position = straight)
-// POSITION_6: Stecchino V3/V4 vertical with PCB down (easy game position = straight)
+// POSITION_1: Stecchino horizontal with buttons up (idle)
+// POSITION_2: Stecchino horizontal with buttons down (force sleep)
+// POSITION_3: Stecchino horizontal with long edge down (spirit level)
+// POSITION_4: Stecchino horizontal with short edge down (opposite to spirit level)
+// POSITION_5: Stecchino vertical with PCB up (normal game position = straight)
+// POSITION_6: Stecchino vertical with PCB down (easy game position = straight)
 uint8_t orientation = NONE;
 
 unsigned long start_time = 0, current_time = 0, elapsed_time = 0, record_time = 0, previous_record_time = 0;
@@ -99,15 +99,11 @@ void setup() {
   FastLED.setBrightness(LOW_BRIGHTNESS);  
   
   // MPU
-  Serial.println("Starting MPU... ");
+  Serial.print("Init MPU...");
   Wire.begin();
   accelgyro.initialize();  
+  Serial.println("done");
   
-  //a_forward_offset = 0;
-  //a_sideway_offset = 0;
-  //a_vertical_offset = -100;
-
-  //delay(2000);
   Vcc = int(readVcc());
   Serial.print("VCC=");
   Serial.print(Vcc);
@@ -481,11 +477,6 @@ float getAngle() {
 
   float angle_2_horizon = 0;
 
-  // Offset accel readings
-  //int a_forward_offset = -2;
-  //int a_sideway_offset = 2;
-  //int a_vertical_offset = 1;
-
   // Convert to expected orientation - includes unit conversion to "cents of g" for MPU range set to 2g
   int a_forward = (ACCELEROMETER_ORIENTATION == 0?ax:(ACCELEROMETER_ORIENTATION == 1?ay:az))/164;
   int a_sideway = (ACCELEROMETER_ORIENTATION == 0?ay:(ACCELEROMETER_ORIENTATION == 1?az:ax))/164;
@@ -515,28 +506,26 @@ float getAngle() {
   }
 
   if (a_verticalRollingSampleMedian >= 80 && abs(a_forwardRollingSampleMedian) <= 25 && abs(a_sidewayRollingSampleMedian) <= 25 && orientation != POSITION_6) {
-    // coté 1 en haut
+    // Vertical with PCB down
     orientation = POSITION_6;
   } else if (a_forwardRollingSampleMedian >= 80 && abs(a_verticalRollingSampleMedian) <= 25 && abs(a_sidewayRollingSampleMedian) <= 25 && orientation != POSITION_2) {
-    // coté 2 en haut
+    // Horizontal with buttons down
     orientation = POSITION_2;
   } else if (a_verticalRollingSampleMedian <= -80 && abs(a_forwardRollingSampleMedian) <= 25 && abs(a_sidewayRollingSampleMedian) <= 25 && orientation != POSITION_5) {
-    // coté 3 en haut
+    // Vertical with PCB up
     orientation = POSITION_5;
   } else if (a_forwardRollingSampleMedian <= -80 && abs(a_verticalRollingSampleMedian) <= 25 && abs(a_sidewayRollingSampleMedian) <= 25 && orientation != POSITION_1) {
-    // coté 4 en haut
+    // Horizontal with buttons up
     orientation = POSITION_1;
   } else if (a_sidewayRollingSampleMedian >= 80 && abs(a_verticalRollingSampleMedian) <= 25 && abs(a_forwardRollingSampleMedian) <= 25 && orientation != POSITION_3) {
-    // coté LEDs en haut
+    // Horizontal with long edge down
     orientation = POSITION_3;
   } else if (a_sidewayRollingSampleMedian <= -80 && abs(a_verticalRollingSampleMedian) <= 25 && abs(a_forwardRollingSampleMedian) <= 25 && orientation != POSITION_4) {
-    // coté batteries en haut
+    // Horizontal with short edge down
     orientation = POSITION_4;
-  }  else {
-    // orientation = FACE_NONE;
   }
 
- angle_2_horizon = atan2(float(a_verticalRollingSampleMedian),float(max(abs(a_sidewayRollingSampleMedian),abs(a_forwardRollingSampleMedian))))*180/PI;
+  angle_2_horizon = atan2(float(a_verticalRollingSampleMedian), float(max(abs(a_sidewayRollingSampleMedian), abs(a_forwardRollingSampleMedian))))*180/PI;
 
   /*
   // for debugging
